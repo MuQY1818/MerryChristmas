@@ -22,16 +22,7 @@ const CONFIG = {
     holdThreshold: 0.85, 
     holdDuration: 2000,  
     photoRadius: 320,    
-    photos: [
-        'assets/photos/1.jpg',
-        'assets/photos/2.jpg',
-        'assets/photos/3.jpg',
-        'assets/photos/4.jpg',
-        'assets/photos/5.jpg',
-        'assets/photos/6.jpg',
-        'assets/photos/7.jpg',
-        'assets/photos/8.jpg'
-    ]
+    photos: Array.from({length: 18}, (_, i) => `assets/photos/${i+1}.jpg`)
 };
 
 let isLoaded = false;
