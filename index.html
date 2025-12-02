@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Christmas Tree</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- MediaPipe Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div id="container">
+        <div id="loading">正在准备魔法... (请允许摄像头权限)</div>
+        <div id="prompt-text">请开启摄像头，伸出一只手</div>
+        <video id="input_video"></video>
+        <canvas id="output_canvas"></canvas>
+        
+        <!-- Photo Gallery Container -->
+        <div id="gallery-container">
+            <div id="gallery-center-text">Merry Christmas</div>
+            <!-- Photos will be injected here by JS -->
+        </div>
+
+        <!-- Audio (Hidden) -->
+        <audio id="bgm" src="assets/music/special frequency.mp3" loop></audio>
+
+        <!-- Music Player UI -->
+        <div id="music-player">
+            <div class="album-cover">
+                <div class="vinyl-record">
+                    <div class="vinyl-label" style="background-image: url('assets/music/Cover.png');"></div>
+                </div>
+            </div>
+            <div class="player-content">
+                <div class="song-info">
+                    <div class="song-title">Special Frequency</div>
+                    <div class="artist-wrapper">
+                        <div class="artist">Weijue Bu</div>
+                        <div class="mini-visualizer">
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="player-controls">
+                    <button id="play-pause-btn" class="control-btn">
+                        <span class="icon">▶</span>
+                    </button>
+                    <div class="progress-wrapper">
+                        <div class="time" id="current-time">0:00</div>
+                        <div class="progress-bar-container" id="progress-container">
+                            <div class="progress-fill" id="progress-fill"></div>
+                            <div class="progress-handle"></div>
+                        </div>
+                        <div class="time" id="total-time">0:00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

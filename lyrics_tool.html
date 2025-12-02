@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyrics Tapping Tool</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        #container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        #status {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+            height: 30px;
+        }
+        #current-line {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #444;
+            border-radius: 10px;
+            background: #222;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        #next-line {
+            font-size: 18px;
+            color: #888;
+            margin-bottom: 30px;
+            height: 24px;
+        }
+        #output {
+            width: 100%;
+            height: 300px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px;
+            font-family: monospace;
+            margin-top: 20px;
+            overflow-y: auto;
+            white-space: pre;
+            text-align: left;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+        .instructions {
+            text-align: left;
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <h1>🎹 Lyrics Tapping Tool</h1>
+    
+    <div class="instructions">
+        <h3>How to use:</h3>
+        1. Click <strong>"Start / Play Audio"</strong>.<br>
+        2. Wait for the music to start.<br>
+        3. When you hear the <strong>start</strong> of the displayed lyric, press the <strong>SPACEBAR</strong> immediately.<br>
+        4. The tool will record the timestamp and move to the next line.<br>
+        5. When finished, copy the JSON from the box below and send it to the AI.
+    </div>
+
+    <div class="controls">
+        <audio id="audio" src="assets/music/special%20frequency.mp3" controls></audio>
+        <button id="btn-reset">Reset</button>
+        <button id="btn-copy">Copy JSON</button>
+    </div>
+
+    <div id="status">Ready...</div>
+
+    <div id="next-line">Next: (Intro Music)</div>
+    <div id="current-line">Press Space to start...</div>
+
+    <textarea id="output" readonly>[]</textarea>
+</div>
+
+<script>
+    const lyricsText = [
+        "(Intro Music)",
+        "Snowflakes dancing 'round",
+        "Landing on your brow",
+        "Streetlights fading out",
+        "I only see you now",
+        "Freezing up the time",
+        "Keeping this somehow",
+        "Touch speaks louder than",
+        "Words can disavow",
+        "Leave the noisy world",
+        "Leave it all behind",
+        "Focus on your breath",
+        "Rhythm gentle kind",
+        "Every little thing",
+        "Printed on my mind",
+        "Closer to me now",
+        "No more time to find",
+        "Drowning in this vibe",
+        "On this Christmas Eve",
+        "Looking in your eyes",
+        "It’s all that I believe",
+        "I don’t need no wine",
+        "Just to feel relieved",
+        "Perfect is the world",
+        "When you're here with me",
+        "(Yeah...)",
+        "Red scarf wrapping round",
+        "Weaving up a dream",
+        "Footprints in the snow",
+        "Like a destined team",
+        "Heartbeat losing track",
+        "Flowing like a stream",
+        "Locked inside your gaze",
+        "Glowing like a beam",
+        "Leave the noisy world",
+        "Leave it all behind",
+        "Focus on your breath",
+        "Rhythm gentle kind",
+        "Every little thing",
+        "Printed on my mind",
+        "Closer to me now",
+        "No more time to find",
+        "Drowning in this vibe",
+        "On this Christmas Eve",
+        "Looking in your eyes",
+        "It’s all that I believe",
+        "I don’t need no wine",
+        "Just to feel relieved",
+        "Perfect is the world",
+        "When you're here with me",
+        "Sleigh bells ringing out",
+        "Singing for the night",
+        "Your love burns so hot",
+        "Brighter than the light",
+        "Like a cocoa cup",
+        "Warming up the fright",
+        "You’re the only one",
+        "Everything is right",
+        "(Instrumental Solo)",
+        "Drowning in this vibe",
+        "On this Christmas Eve",
+        "Looking in your eyes",
+        "It’s all that I believe",
+        "I don’t need no wine",
+        "Just to feel relieved",
+        "Perfect is the world",
+        "When you're here with me",
+        "Snow is falling down",
+        "Under moonlight's glow",
+        "Heaven's right here",
+        "I just want you to know",
+        "Time is moving slow",
+        "Never let you go",
+        "Baby stay with me",
+        "Let the sunrise slow..."
+    ];
+
+    let currentIndex = 0;
+    let recordedLyrics = [];
+    const audio = document.getElementById('audio');
+    const statusEl = document.getElementById('status');
+    const currentLineEl = document.getElementById('current-line');
+    const nextLineEl = document.getElementById('next-line');
+    const outputEl = document.getElementById('output');
+
+    function updateDisplay() {
+        if (currentIndex < lyricsText.length) {
+            currentLineEl.textContent = lyricsText[currentIndex];
+            currentLineEl.style.color = "#fff";
+            if (currentIndex + 1 < lyricsText.length) {
+                nextLineEl.textContent = "Next: " + lyricsText[currentIndex + 1];
+            } else {
+                nextLineEl.textContent = "End of lyrics";
+            }
+        } else {
+            currentLineEl.textContent = "✨ Finished! ✨";
+            nextLineEl.textContent = "";
+        }
+    }
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        currentIndex = 0;
+        recordedLyrics = [];
+        outputEl.value = "[]";
+        statusEl.textContent = "Reset.";
+        audio.currentTime = 0;
+        audio.pause();
+        updateDisplay();
+    });
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        outputEl.select();
+        document.execCommand('copy');
+        statusEl.textContent = "Copied to clipboard!";
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault(); // Prevent scrolling
+
+            if (audio.paused) {
+                audio.play();
+                statusEl.textContent = "Playing...";
+                updateDisplay();
+                return;
+            }
+
+            if (currentIndex < lyricsText.length) {
+                const time = Math.max(0, audio.currentTime - 0.2); // Slight offset compensation for reaction time
+                const text = lyricsText[currentIndex];
+                
+                recordedLyrics.push({
+                    time: parseFloat(time.toFixed(2)),
+                    text: text
+                });
+
+                outputEl.value = JSON.stringify(recordedLyrics, null, 4);
+                
+                // Visual feedback
+                currentLineEl.style.color = "#4CAF50";
+                setTimeout(() => {
+                     currentIndex++;
+                     updateDisplay();
+                }, 50); // Short delay to show green
+            }
+        }
+    });
+
+    // Init
+    updateDisplay();
+
+</script>
+</body>
+</html>
