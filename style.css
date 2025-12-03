@@ -9,7 +9,7 @@ body {
     align-items: center;
     height: 100vh;
     color: white;
-    font-family: 'Playfair Display', serif;
+    font-family: 'Nunito', sans-serif;
 }
 
 /* Aurora Borealis Effect */
@@ -63,8 +63,8 @@ body::before {
     pointer-events: none;
     text-shadow: 0 0 15px rgba(100, 255, 218, 0.8);
     transition: opacity 0.5s ease;
-    /* Use Great Vibes for English, KaiTi for Chinese (Elegant Calligraphy) */
-    font-family: 'Great Vibes', 'STKaiti', 'KaiTi', cursive;
+    /* Use Mountains of Christmas for English, KaiTi for Chinese */
+    font-family: 'Mountains of Christmas', 'STKaiti', 'KaiTi', cursive;
     letter-spacing: 2px;
 }
 
@@ -119,7 +119,7 @@ body::before {
 }
 
 #gallery-center-text {
-    font-family: 'Great Vibes', cursive;
+    font-family: 'Mountains of Christmas', cursive;
     font-size: 120px;
     color: #fff;
     text-shadow: 
