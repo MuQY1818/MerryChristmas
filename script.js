@@ -789,8 +789,9 @@ class LyricsManager {
             ctx.filter = `blur(${blurAmount}px)`;
         }
 
-        // Font Style - Use new Google Font
-        ctx.font = "bold 58px 'Mountains of Christmas', cursive"; 
+        // Font Style - Use new Elegant Font
+        // Great Vibes is a script font, so we make it larger to be readable
+        ctx.font = "80px 'Great Vibes', cursive"; 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
