@@ -416,6 +416,7 @@ class MusicPlayer {
         this.progressFill = document.getElementById('progress-fill');
         this.currentTimeEl = document.getElementById('current-time');
         this.totalTimeEl = document.getElementById('total-time');
+        this.downloadBtn = document.getElementById('download-btn');
         
         this.isPlaying = false;
         
@@ -427,6 +428,12 @@ class MusicPlayer {
         this.playBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent bubbling
             this.togglePlay();
+        });
+
+        // Download Click
+        this.downloadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.downloadMusic();
         });
         
         // Audio Events
@@ -506,6 +513,16 @@ class MusicPlayer {
         this.setDuration(); // Ensure duration is displayed
         // Sync initial state
         this.setPlayingState(!this.audio.paused);
+    }
+
+    downloadMusic() {
+        const link = document.createElement('a');
+        link.href = this.audio.src;
+        link.download = 'Special_Frequency_Christmas.mp3';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 

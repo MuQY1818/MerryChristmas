@@ -311,41 +311,51 @@ body {
 .player-controls {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 15px;
 }
 
 .control-btn {
-    background: linear-gradient(135deg, #fff, #e0e0e0);
+    background: none;
     border: none;
-    color: #333;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 24px;
     cursor: pointer;
     padding: 0;
+    outline: none;
+    transition: transform 0.2s ease, color 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+}
+
+#play-pause-btn {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    transition: transform 0.2s, box-shadow 0.2s;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.control-btn:hover {
+#play-pause-btn:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
-.control-btn:active {
-    transform: scale(0.95);
+#download-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.6);
 }
 
-.control-btn .icon {
-    font-size: 14px;
-    margin-left: 2px; /* Center play icon */
-}
-
-#music-player.playing .control-btn .icon {
-    margin-left: 0;
+#download-btn:hover {
+    transform: scale(1.1);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .progress-wrapper {
