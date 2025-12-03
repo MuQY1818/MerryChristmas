@@ -22,8 +22,8 @@ const CONFIG = {
     holdThreshold: 0.85, 
     holdDuration: 2000,  
     photoRadius: 320,    
-    // Use mirror.ghproxy.com for photos acceleration
-            photos: Array.from({length: 18}, (_, i) => `https://mirror.ghproxy.com/https://raw.githubusercontent.com/MuQY1818/MerryChristmas/main/assets/photos/${i+1}.jpg`)
+    // Use gh-proxy.org for photos acceleration
+            photos: Array.from({length: 18}, (_, i) => `https://gh-proxy.org/https://raw.githubusercontent.com/MuQY1818/MerryChristmas/main/assets/photos/${i+1}.jpg`)
         };
 
 let isLoaded = false;
