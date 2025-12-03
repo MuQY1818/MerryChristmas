@@ -74,40 +74,68 @@ preloadImages();
 class SnowSystem {
     constructor() {
         this.flakes = [];
-        for(let i=0; i<150; i++) {
-            this.flakes.push(this.createFlake());
+        // Layered Snow: Back (more, small, slow), Mid, Front (few, fast, large)
+        this.createLayer(100, { minSize: 1, maxSize: 2, minSpeed: 0.2, maxSpeed: 0.5, opacity: 0.3, blur: true });
+        this.createLayer(50, { minSize: 2, maxSize: 4, minSpeed: 0.5, maxSpeed: 1.0, opacity: 0.6, blur: false });
+        this.createLayer(20, { minSize: 4, maxSize: 6, minSpeed: 1.0, maxSpeed: 2.0, opacity: 0.9, blur: false });
+    }
+    
+    createLayer(count, config) {
+        for(let i=0; i<count; i++) {
+            this.flakes.push(this.createFlake(config));
         }
     }
     
-    createFlake() {
+    createFlake(config) {
         return {
             x: Math.random() * canvasElement.width,
             y: Math.random() * canvasElement.height,
-            size: Math.random() * 3 + 1,
-            speedY: Math.random() * 1 + 0.2,
+            size: config.minSize + Math.random() * (config.maxSize - config.minSize),
+            speedY: config.minSpeed + Math.random() * (config.maxSpeed - config.minSpeed),
             speedX: (Math.random() - 0.5) * 0.5,
-            opacity: Math.random() * 0.5 + 0.1
+            swaySpeed: Math.random() * 0.05 + 0.01,
+            swayPhase: Math.random() * Math.PI * 2,
+            opacity: config.opacity,
+            blur: config.blur
         };
     }
 
     update() {
         this.flakes.forEach(flake => {
             flake.y += flake.speedY;
-            flake.x += flake.speedX;
+            // Sine wave sway
+            flake.x += Math.sin(time * flake.swaySpeed + flake.swayPhase) * 0.5;
+            
             if(flake.y > canvasElement.height) {
                 flake.y = -10;
                 flake.x = Math.random() * canvasElement.width;
             }
+            if(flake.x > canvasElement.width) flake.x = 0;
+            if(flake.x < 0) flake.x = canvasElement.width;
         });
     }
 
     draw(ctx) {
-        ctx.fillStyle = 'white';
         this.flakes.forEach(flake => {
+            ctx.save();
             ctx.globalAlpha = flake.opacity;
+            
+            if (flake.blur) {
+                // Simple blur simulation using reduced alpha or shadow
+                // Canvas filter is expensive, so we skip actual filter
+            }
+            
+            // Soft snowflake using gradient
+            const grad = ctx.createRadialGradient(flake.x, flake.y, 0, flake.x, flake.y, flake.size);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = grad;
+            
             ctx.beginPath();
             ctx.arc(flake.x, flake.y, flake.size, 0, Math.PI*2);
             ctx.fill();
+            
+            ctx.restore();
         });
         ctx.globalAlpha = 1.0;
     }
@@ -154,25 +182,39 @@ class MagicDust {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.size = Math.random() * 2;
-        this.vx = (Math.random() - 0.5) * 0.5;
-        this.vy = (Math.random() - 0.5) * 0.5 - 0.5; // Float up slightly
+        this.size = Math.random() * 3; // Slightly larger
+        this.vx = (Math.random() - 0.5) * 1.5; // More spread
+        this.vy = (Math.random() - 0.5) * 1.5 - 0.5; 
         this.life = 1.0;
-        this.color = `hsl(${Math.random() * 60 + 30}, 100%, 80%)`; // Gold/Yellow
+        // Varied magical colors: Gold, Cyan, Magenta, White
+        const hues = [50, 180, 300, 0]; // Gold, Cyan, Magenta, Red/White
+        const selectedHue = hues[Math.floor(Math.random() * hues.length)];
+        const saturation = selectedHue === 0 ? '0%' : '100%';
+        this.color = `hsla(${selectedHue}, ${saturation}, 80%,`; 
     }
     
     update() {
         this.x += this.vx;
         this.y += this.vy;
-        this.life -= 0.01;
+        this.vy -= 0.02; // Float up acceleration
+        this.life -= 0.015;
+        this.size *= 0.95; // Shrink
     }
     
     draw(ctx) {
+        if (this.life <= 0) return;
         ctx.globalAlpha = this.life;
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = this.color + this.life + ')';
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
         ctx.fill();
+        
+        // Glow
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color + '1)';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
         ctx.globalAlpha = 1.0;
     }
 }
@@ -274,6 +316,10 @@ class PhotoParticle {
         this.floatOffset = Math.random() * Math.PI * 2;
         this.swayPhase = Math.random() * Math.PI * 2;
         
+        // Twinkle properties for lights
+        this.twinkleSpeed = 2 + Math.random() * 5;
+        this.twinklePhase = Math.random() * Math.PI * 2;
+
         this.projected = null; // Store projected coordinates
     }
     
@@ -369,13 +415,31 @@ class PhotoParticle {
              // Image
              ctx.drawImage(this.img, -halfSize, -halfSize, drawSize, drawSize);
              
-             // Shine effect
-             ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-             ctx.beginPath();
-             ctx.moveTo(-halfSize, -halfSize);
-             ctx.lineTo(0, -halfSize);
-             ctx.lineTo(-halfSize, 0);
-             ctx.fill();
+             // Dynamic Shine effect
+             // Move the shine across the photo based on time
+             const shinePos = (time * 2 + this.initialX * 0.01) % 4; // 0 to 4 cycle
+             if (shinePos < 2) { // Only show during part of the cycle
+                 ctx.save();
+                 ctx.beginPath();
+                 ctx.rect(-halfSize, -halfSize, drawSize, drawSize);
+                 ctx.clip();
+                 
+                 const shineX = -drawSize + (shinePos * drawSize); 
+                 
+                 const shineGrad = ctx.createLinearGradient(shineX, -halfSize, shineX + drawSize*0.5, drawSize);
+                 shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                 shineGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.4)'); // Bright shine
+                 shineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                 
+                 ctx.fillStyle = shineGrad;
+                 ctx.beginPath();
+                 ctx.moveTo(shineX, -halfSize);
+                 ctx.lineTo(shineX + 20, -halfSize); // Slanted
+                 ctx.lineTo(shineX + drawSize*0.5 + 20, drawSize);
+                 ctx.lineTo(shineX + drawSize*0.5, drawSize);
+                 ctx.fill();
+                 ctx.restore();
+             }
 
         } else {
             // Light Particle
@@ -387,8 +451,13 @@ class PhotoParticle {
             ctx.fillStyle = gradient;
             
             // Twinkle
-            const twinkle = 0.8 + Math.sin(time * 5 + this.floatOffset) * 0.2;
-            ctx.scale(twinkle, twinkle);
+            // More organic twinkle
+            const twinkleBase = 0.5 + Math.sin(time * this.twinkleSpeed + this.twinklePhase) * 0.3;
+            // Random flash
+            const flash = (Math.random() > 0.98) ? 1.5 : 0; 
+            const finalScale = twinkleBase + flash;
+            
+            ctx.scale(finalScale, finalScale);
             
             ctx.beginPath();
             ctx.arc(0, 0, drawSize, 0, Math.PI*2);
@@ -416,7 +485,6 @@ class MusicPlayer {
         this.progressFill = document.getElementById('progress-fill');
         this.currentTimeEl = document.getElementById('current-time');
         this.totalTimeEl = document.getElementById('total-time');
-        this.downloadBtn = document.getElementById('download-btn');
         
         this.isPlaying = false;
         
@@ -428,12 +496,6 @@ class MusicPlayer {
         this.playBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent bubbling
             this.togglePlay();
-        });
-
-        // Download Click
-        this.downloadBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.downloadMusic();
         });
         
         // Audio Events
@@ -513,16 +575,6 @@ class MusicPlayer {
         this.setDuration(); // Ensure duration is displayed
         // Sync initial state
         this.setPlayingState(!this.audio.paused);
-    }
-
-    downloadMusic() {
-        const link = document.createElement('a');
-        link.href = this.audio.src;
-        link.download = 'Special_Frequency_Christmas.mp3';
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     }
 }
 
@@ -711,11 +763,11 @@ class LyricsManager {
             // Very subtle movement, NO jumping
             const stableTime = elapsed - ENTRANCE_DURATION;
             
-            // Gentle breathing (Scale)
-            scale = 1 + Math.sin(stableTime * 1.5) * 0.015;
+            // Gentle breathing (Scale) - More organic using multiple sines
+            scale = 1 + Math.sin(stableTime * 1.2) * 0.01 + Math.sin(stableTime * 2.5) * 0.005;
             
-            // Very slow float (Y)
-            yOffset = Math.sin(stableTime * 1.0) * 3;
+            // Organic float (Y)
+            yOffset = Math.sin(stableTime * 0.8) * 4 + Math.cos(stableTime * 1.5) * 2;
             
             rotation = Math.sin(stableTime * 0.5) * 0.01;
         }
@@ -737,26 +789,28 @@ class LyricsManager {
             ctx.filter = `blur(${blurAmount}px)`;
         }
 
-        // Font Style - Slightly larger and more magical
-        ctx.font = "bold 52px 'Georgia', cursive"; 
+        // Font Style - Use new Google Font
+        ctx.font = "bold 58px 'Mountains of Christmas', cursive"; 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
         // --- Stronger Glow for Impact ---
         // Pulse the glow slightly
-        const pulse = 15 + Math.sin(elapsed * 4) * 8;
+        const pulse = 15 + Math.sin(elapsed * 3) * 5;
         ctx.shadowBlur = pulse; 
         ctx.shadowColor = "rgba(255, 215, 0, 0.8)"; // Gold glow
 
         // --- Text Stroke (Depth) ---
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)"; 
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.6)"; 
         ctx.strokeText(this.activeLyric.text, 0, 0);
         
-        // --- Gradient Fill (Platinum to Gold) ---
+        // --- Gradient Fill (Platinum to Gold, shifting over time) ---
         const gradient = ctx.createLinearGradient(0, -30, 0, 30);
+        // Shift colors slightly over time for magical effect
+        const shift = Math.sin(time * 0.5); 
         gradient.addColorStop(0, "#FFFFFF"); 
-        gradient.addColorStop(0.4, "#FFFACD"); 
+        gradient.addColorStop(0.5, shift > 0 ? "#FFFACD" : "#E0FFFF"); // LemonChiffon or LightCyan
         gradient.addColorStop(1, "#FFD700"); 
         
         ctx.fillStyle = gradient;
