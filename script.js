@@ -22,7 +22,8 @@ const CONFIG = {
     holdThreshold: 0.85, 
     holdDuration: 2000,  
     photoRadius: 320,    
-    photos: Array.from({length: 18}, (_, i) => `assets/photos/${i+1}.jpg`)
+    // Use jsDelivr CDN for photos too
+    photos: Array.from({length: 18}, (_, i) => `https://cdn.jsdelivr.net/gh/MuQY1818/MerryChristmas@main/assets/photos/${i+1}.jpg`)
 };
 
 let isLoaded = false;
