@@ -1088,8 +1088,9 @@ function drawMagicalHand(ctx, landmarks) {
     ctx.save();
     
     // 1. Draw Connections (Constellation Lines)
-    ctx.strokeStyle = 'rgba(100, 255, 218, 0.15)'; // Very subtle cyan
-    ctx.lineWidth = 1;
+    // Increase opacity to make it clearly visible
+    ctx.strokeStyle = 'rgba(100, 255, 218, 0.6)'; // Brighter Cyan
+    ctx.lineWidth = 2; // Thicker lines
     ctx.beginPath();
     HAND_CONNECTIONS.forEach(([i, j]) => {
         const p1 = landmarks[i];
@@ -1111,21 +1112,25 @@ function drawMagicalHand(ctx, landmarks) {
         ctx.beginPath();
         if (isFingertip) {
             ctx.fillStyle = '#FFD700'; // Gold tips
-            // Draw tiny star for fingertips
-            const r = 4 + Math.sin(time * 5 + index) * 2;
+            // Draw larger star for fingertips
+            const r = 6 + Math.sin(time * 5 + index) * 3;
             ctx.arc(x, y, r, 0, Math.PI * 2);
         } else {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // White joints
-            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // Brighter White joints
+            ctx.arc(x, y, 4, 0, Math.PI * 2); // Larger joints
         }
         ctx.fill();
         
         // Glow
         if (isFingertip) {
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#FFD700';
+            // Emulate glow with radial gradient for performance and better look
+            const glow = ctx.createRadialGradient(x, y, 0, x, y, 15);
+            glow.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
+            glow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
             ctx.fill();
-            ctx.shadowBlur = 0;
         }
     });
     
