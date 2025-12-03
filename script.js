@@ -34,6 +34,11 @@ let sparkles = [];
 let treeParticles = []; // New Photo Tree Particles
 let loadedImages = []; // Preloaded Image objects
 
+// Mouse Interaction
+const mouse = { x: -1000, y: -1000 };
+let hoveredParticle = null;
+
+
 // Resize canvas
 function resizeCanvas() {
     canvasElement.width = window.innerWidth;
@@ -106,6 +111,43 @@ class SnowSystem {
         ctx.globalAlpha = 1.0;
     }
 }
+
+// --- Mouse Interaction & Modal Logic ---
+
+// Mouse Move
+canvasElement.addEventListener('mousemove', (e) => {
+    const rect = canvasElement.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+});
+
+// Click to Open Modal
+canvasElement.addEventListener('click', () => {
+    if (hoveredParticle && hoveredParticle.img && hoveredParticle.type === 'photo') {
+        openModal(hoveredParticle.img.src);
+    }
+});
+
+// Modal Logic
+const modal = document.getElementById('photo-modal');
+const modalImg = document.getElementById('modal-image');
+const closeModalBtn = document.getElementById('close-modal');
+
+function openModal(src) {
+    modalImg.src = src;
+    modal.classList.add('visible');
+}
+
+closeModalBtn.addEventListener('click', () => {
+    modal.classList.remove('visible');
+});
+
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+        modal.classList.remove('visible');
+    }
+});
+
 
 class MagicDust {
     constructor(x, y) {
@@ -230,6 +272,8 @@ class PhotoParticle {
         this.spinSpeed = (Math.random() - 0.5) * 0.01; // Slower spin
         this.floatOffset = Math.random() * Math.PI * 2;
         this.swayPhase = Math.random() * Math.PI * 2;
+        
+        this.projected = null; // Store projected coordinates
     }
     
     update(treeRotation) {
@@ -247,43 +291,82 @@ class PhotoParticle {
         this.angle += this.spinSpeed;
     }
     
-    draw(ctx, cx, cy, opacityMultiplier = 1) {
+    updateProjection(cx, cy) {
         const fov = 400;
         const zDepth = this.currZ + 400; 
-        if (zDepth < 1) return;
+        if (zDepth < 1) {
+            this.projected = null;
+            return;
+        }
         
         const scale = fov / zDepth;
         
-        const px = cx + (this.currX * scale);
-        const py = cy + (this.currY * scale);
-        const size = this.baseSize * scale;
+        this.projected = {
+            x: cx + (this.currX * scale),
+            y: cy + (this.currY * scale),
+            size: this.baseSize * scale,
+            zDepth: zDepth
+        };
+    }
+    
+    isHit(mx, my) {
+        if (!this.projected || this.type !== 'photo') return false;
+        const { x, y, size } = this.projected;
+        const half = size / 2;
+        // Simple bounding box hit test
+        return (mx >= x - half && mx <= x + half && my >= y - half && my <= y + half);
+    }
+    
+    draw(ctx, opacityMultiplier = 1, isHovered = false) {
+        if (!this.projected) return;
         
+        const { x, y, size, zDepth } = this.projected;
+        
+        // Apply hover scale
+        let drawSize = size;
+        let zIndexBias = 0;
+        
+        if (isHovered) {
+            drawSize *= 1.3; // 30% bigger
+            zIndexBias = 1000; // Draw on top? No, canvas order matters. 
+            // But visually we want it to pop.
+            canvasElement.style.cursor = 'pointer';
+        }
+
         // Fade distant particles
         const alpha = Math.min(1, Math.max(0.1, (this.currZ + 200) / 400)); 
         
         ctx.save();
-        ctx.translate(px, py);
+        ctx.translate(x, y);
         ctx.globalAlpha = alpha * opacityMultiplier;
 
         if (this.type === 'photo' && this.img) {
-             ctx.rotate(this.angle);
+             if (isHovered) {
+                 // Reset rotation for hovered item so it's straight? Or keep it?
+                 // Let's keep spinning but maybe slower? Or just keep it.
+                 ctx.rotate(this.angle);
+                 
+                 // Extra Glow for hover
+                 ctx.shadowBlur = 20;
+                 ctx.shadowColor = "rgba(255, 215, 0, 1)";
+             } else {
+                 ctx.rotate(this.angle);
+             }
              
              // Draw Square Photo with Border
-             const halfSize = size / 2;
-             const borderSize = size * 0.1; // 10% border
+             const halfSize = drawSize / 2;
+             const borderSize = drawSize * 0.1; // 10% border
 
-             // No shadowBlur for performance
-             
              // Gold Frame
-             ctx.fillStyle = '#B8860B'; // Dark Golden Rod
-             ctx.fillRect(-halfSize - borderSize, -halfSize - borderSize, size + borderSize*2, size + borderSize*2);
+             ctx.fillStyle = isHovered ? '#FFFACD' : '#B8860B'; // Lighter gold on hover
+             ctx.fillRect(-halfSize - borderSize, -halfSize - borderSize, drawSize + borderSize*2, drawSize + borderSize*2);
              
              // Inner Glow
              ctx.fillStyle = '#FFF8DC'; // Cornsilk
-             ctx.fillRect(-halfSize - 1, -halfSize - 1, size + 2, size + 2);
+             ctx.fillRect(-halfSize - 1, -halfSize - 1, drawSize + 2, drawSize + 2);
 
              // Image
-             ctx.drawImage(this.img, -halfSize, -halfSize, size, size);
+             ctx.drawImage(this.img, -halfSize, -halfSize, drawSize, drawSize);
              
              // Shine effect
              ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
@@ -297,7 +380,7 @@ class PhotoParticle {
             // Light Particle
             ctx.globalCompositeOperation = 'lighter';
             // Performance: Use Gradient instead of shadowBlur
-            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, drawSize);
             gradient.addColorStop(0, this.color);
             gradient.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = gradient;
@@ -307,7 +390,7 @@ class PhotoParticle {
             ctx.scale(twinkle, twinkle);
             
             ctx.beginPath();
-            ctx.arc(0, 0, size, 0, Math.PI*2);
+            ctx.arc(0, 0, drawSize, 0, Math.PI*2);
             ctx.fill();
         }
         
@@ -1028,9 +1111,31 @@ function onResults(results) {
         canvasCtx.scale(scaleAnim, scaleAnim);
         canvasCtx.translate(-cx, -cy);
         
+        // Handle Hit Detection
+        const transformedMouseX = (mouse.x - cx) / scaleAnim + cx;
+        const transformedMouseY = (mouse.y - cy) / scaleAnim + cy;
+        
+        hoveredParticle = null;
+        canvasElement.style.cursor = 'default';
+
+        // Update all projections first
         treeParticles.forEach(p => {
             p.update(treeRotation);
-            p.draw(canvasCtx, cx, cy, opacity);
+            p.updateProjection(cx, cy);
+        });
+
+        // Check for hits (Front to Back)
+        for (let i = treeParticles.length - 1; i >= 0; i--) {
+            const p = treeParticles[i];
+            if (p.isHit(transformedMouseX, transformedMouseY)) {
+                hoveredParticle = p;
+                break;
+            }
+        }
+
+        // Draw all
+        treeParticles.forEach(p => {
+            p.draw(canvasCtx, opacity, p === hoveredParticle);
         });
         
         canvasCtx.restore();
