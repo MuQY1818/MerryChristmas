@@ -1070,30 +1070,102 @@ function drawUltimateStar(ctx, cx, cy, scale) {
 }
 
 
-function drawEnergyLine(ctx, p1, p2, dist) {
+// --- Hand Visualization ---
+
+const HAND_CONNECTIONS = [
+    [0, 1], [1, 2], [2, 3], [3, 4],
+    [0, 5], [5, 6], [6, 7], [7, 8],
+    [5, 9], [9, 10], [10, 11], [11, 12],
+    [9, 13], [13, 14], [14, 15], [15, 16],
+    [13, 17], [17, 18], [18, 19], [19, 20],
+    [0, 17]
+];
+
+function drawMagicalHand(ctx, landmarks) {
+    const width = canvasElement.width;
+    const height = canvasElement.height;
+
+    ctx.save();
+    
+    // 1. Draw Connections (Constellation Lines)
+    ctx.strokeStyle = 'rgba(100, 255, 218, 0.15)'; // Very subtle cyan
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    HAND_CONNECTIONS.forEach(([i, j]) => {
+        const p1 = landmarks[i];
+        const p2 = landmarks[j];
+        ctx.moveTo(p1.x * width, p1.y * height);
+        ctx.lineTo(p2.x * width, p2.y * height);
+    });
+    ctx.stroke();
+
+    // 2. Draw Joints (Stars)
+    landmarks.forEach((lm, index) => {
+        const x = lm.x * width;
+        const y = lm.y * height;
+        
+        // Fingertips (4, 8, 12, 16, 20)
+        const isFingertip = [4, 8, 12, 16, 20].includes(index);
+        
+        // Draw Star/Dot
+        ctx.beginPath();
+        if (isFingertip) {
+            ctx.fillStyle = '#FFD700'; // Gold tips
+            // Draw tiny star for fingertips
+            const r = 4 + Math.sin(time * 5 + index) * 2;
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+        } else {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'; // White joints
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        
+        // Glow
+        if (isFingertip) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#FFD700';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    });
+    
+    ctx.restore();
+}
+
+function drawEnergyBetweenFingers(ctx, p1, p2, dist) {
     const opacity = Math.max(0, 1 - (dist / 0.3)); 
+    if (opacity <= 0.01) return;
+
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     
-    // Removed shadowBlur
-    // Draw multiple lines for glow effect
-    const colors = [`rgba(100, 255, 218, ${opacity})`, `rgba(100, 255, 218, ${opacity * 0.5})`];
-    const widths = [3, 10];
+    // Main Energy Line (Lightning-like)
+    const cx = (p1.x + p2.x) / 2;
+    const cy = (p1.y + p2.y) / 2;
     
-    for(let i=1; i>=0; i--) {
-        ctx.strokeStyle = colors[i];
-        ctx.lineWidth = widths[i];
+    // Jitter effect for energy
+    const jitter = (val) => val + (Math.random() - 0.5) * 5;
+    
+    ctx.strokeStyle = `rgba(255, 215, 0, ${opacity})`; // Gold energy
+    ctx.lineWidth = 2 + opacity * 3;
+    
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.quadraticCurveTo(jitter(cx), jitter(cy), p2.x, p2.y);
+    ctx.stroke();
+    
+    // Particles emitting from center
+    if (Math.random() > 0.5) {
+        // Add temporary sparkle to global array (if we want)
+        // Or just draw direct simple particles
+        const px = cx + (Math.random() - 0.5) * 20;
+        const py = cy + (Math.random() - 0.5) * 20;
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
         ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
+        ctx.arc(px, py, Math.random() * 2, 0, Math.PI*2);
+        ctx.fill();
     }
 
-    ctx.fillStyle = '#64ffda';
-    ctx.beginPath();
-    ctx.arc(p1.x, p1.y, 5, 0, Math.PI*2);
-    ctx.arc(p2.x, p2.y, 5, 0, Math.PI*2);
-    ctx.fill();
     ctx.restore();
 }
 
@@ -1250,7 +1322,10 @@ function onResults(results) {
 
         const landmarks = results.multiHandLandmarks[0];
         
-        // Fingers
+        // Visualize Full Hand
+        drawMagicalHand(canvasCtx, landmarks);
+
+        // Fingers for Interaction
         const thumb = landmarks[4];
         const index = landmarks[8];
         
@@ -1262,7 +1337,8 @@ function onResults(results) {
             Math.pow(thumb.y - index.y, 2)
         );
 
-        drawEnergyLine(canvasCtx, p1, p2, dist);
+        // Visualize Energy Pinch
+        drawEnergyBetweenFingers(canvasCtx, p1, p2, dist);
 
         let rawScale = (dist - 0.05) / 0.2;
         rawScale = Math.max(0, Math.min(1, rawScale));
