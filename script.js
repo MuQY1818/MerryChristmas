@@ -33,6 +33,7 @@ let particles = []; // Explosion particles
 let magicDust = [];
 let sparkles = [];
 let treeParticles = []; // New Photo Tree Particles
+let interactiveSystem; // New 3D Interactive System
 let loadedImages = []; // Preloaded Image objects
 
 // Mouse Interaction
@@ -468,6 +469,163 @@ class PhotoParticle {
     }
 }
 
+// --- Interactive 3D Particle System ---
+
+class InteractiveParticle {
+    constructor(x, y, z, color) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        // Random spread velocity
+        this.vx = (Math.random() - 0.5) * 4; 
+        this.vy = (Math.random() - 0.5) * 4;
+        this.vz = (Math.random() - 0.5) * 4;
+        this.color = color;
+        this.size = Math.random() * 3 + 2;
+        this.life = 1.0;
+        this.decay = 0.02 + Math.random() * 0.03;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.z += this.vz;
+        
+        // Drag
+        this.vx *= 0.92;
+        this.vy *= 0.92;
+        this.vz *= 0.92;
+        
+        // Gravity (slight float up or down?)
+        this.vy -= 0.05; // Float up
+        
+        this.life -= this.decay;
+    }
+    
+    draw(ctx, cx, cy, fov) {
+        if (this.life <= 0) return;
+        
+        const zDepth = this.z + fov;
+        if (zDepth < 1) return;
+        
+        const scale = fov / zDepth;
+        const x2d = cx + this.x * scale;
+        const y2d = cy + this.y * scale;
+        const size2d = this.size * scale;
+        
+        ctx.save();
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(x2d, y2d, size2d, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+class InteractiveSystem {
+    constructor() {
+        this.particles = [];
+        this.fov = 400;
+        this.handEmitters = {}; // Store emitter state per hand/finger
+    }
+    
+    emit(x, y, z, count, color) {
+        for(let i=0; i<count; i++) {
+            this.particles.push(new InteractiveParticle(x, y, z, color));
+        }
+    }
+    
+    update() {
+        for(let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.update();
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+    }
+    
+    draw(ctx, width, height) {
+        const cx = width / 2;
+        const cy = height / 2; // Center of screen for 3D projection
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        this.particles.forEach(p => p.draw(ctx, cx, cy, this.fov));
+        ctx.restore();
+    }
+    
+    // Handle Hand Interaction
+    handleHand(landmarks, width, height) {
+        if (!landmarks) return;
+        
+        const cx = width / 2;
+        const cy = height / 2;
+
+        // Fingertips: Thumb, Index, Middle, Ring, Pinky
+        const fingertips = [4, 8, 12, 16, 20];
+        
+        fingertips.forEach(idx => {
+            const lm = landmarks[idx];
+            
+            // Convert 2D normalized to "3D world space"
+            // We assume Z=0 for the hand plane, but we could estimate depth from hand size if needed.
+            // For simplicity, Z=0 (on screen plane).
+            // But wait, our 3D system uses cx, cy as origin.
+            // x2d = cx + x * scale.
+            // If z=0, scale = 1.
+            // So x = x2d - cx.
+            
+            const screenX = lm.x * width;
+            const screenY = lm.y * height;
+            
+            const worldX = screenX - cx;
+            const worldY = screenY - cy;
+            const worldZ = 0; 
+            
+            // Emit trail
+            if (Math.random() > 0.3) {
+                this.emit(worldX, worldY, worldZ, 1, '#64ffda'); // Cyan trail
+            }
+        });
+    }
+    
+    // Handle Lyric Interaction
+    handleLyrics(bounds, width, height, landmarks) {
+        if (!bounds || !landmarks) return;
+        
+        // Check if any fingertip is inside/near bounds
+        const fingertips = [4, 8, 12, 16, 20];
+        let isTouching = false;
+        
+        fingertips.forEach(idx => {
+            const lm = landmarks[idx];
+            const sx = lm.x * width;
+            const sy = lm.y * height;
+            
+            // Simple AABB check with padding
+            const padding = 40;
+            if (sx > bounds.x - padding && sx < bounds.x + bounds.w + padding &&
+                sy > bounds.y - padding && sy < bounds.y + bounds.h + padding) {
+                isTouching = true;
+                
+                // Emit particles from point of contact (approximate)
+                 const cx = width / 2;
+                 const cy = height / 2;
+                 const wx = sx - cx;
+                 const wy = sy - cy;
+                 
+                 if (Math.random() > 0.5) {
+                     this.emit(wx, wy, 0, 2, '#FFD700'); // Gold sparks
+                 }
+            }
+        });
+        
+        return isTouching;
+    }
+}
+
 // --- Advanced Visualization Functions (Legacy for Growing Phase) ---
 
 // Global timer for animations
@@ -586,6 +744,8 @@ class LyricsManager {
         this.currentIndex = -1;
         this.activeLyric = null;
         this.activeLyricProgress = 0;
+        this.currentBounds = null; // For interaction
+        this.isTouched = false;
         
         // Default "Surprise" Lyrics (Timeline in seconds)
         this.setLyrics([
@@ -771,6 +931,15 @@ class LyricsManager {
             
             rotation = Math.sin(stableTime * 0.5) * 0.01;
         }
+        
+        // Interaction Effect (Disabled per user request - "Too ugly")
+        // if (this.isTouched) {
+        //     const shakeX = (Math.random() - 0.5) * 5;
+        //     const shakeY = (Math.random() - 0.5) * 5;
+        //     yOffset += shakeY;
+        //     rotation += (Math.random() - 0.5) * 0.1;
+        //     scale *= 1.05;
+        // }
 
         ctx.save();
         
@@ -780,6 +949,25 @@ class LyricsManager {
         ctx.translate(cx, cy + yOffset);
         ctx.rotate(rotation);
         ctx.scale(scale, scale);
+        
+        // Font Style - Use new Playful Font
+        // Mountains of Christmas is festive and readable
+        ctx.font = "bold 80px 'Mountains of Christmas', cursive"; 
+        
+        // Calculate Bounds for Interaction
+        const textMetrics = ctx.measureText(this.activeLyric.text);
+        const textWidth = textMetrics.width;
+        const textHeight = 80; // Approximate
+        
+        // Store world space bounds
+        // Note: We are in transformed space here, so we need to approximate bounds in screen space
+        // Since we translated to cx, cy+yOffset, the center is there.
+        this.currentBounds = {
+            x: cx - (textWidth * scale) / 2,
+            y: cy + yOffset - (textHeight * scale) / 2,
+            w: textWidth * scale,
+            h: textHeight * scale
+        };
         
         // Global Alpha
         ctx.globalAlpha = alpha;
@@ -1194,7 +1382,7 @@ const init = () => {
     // --- Init ---
     lyricsManager = new LyricsManager(bgm);
     musicPlayer = new MusicPlayer(bgm);
-
+    interactiveSystem = new InteractiveSystem();
 
     const camera = new Camera(videoElement, {
         onFrame: async () => {
@@ -1295,8 +1483,40 @@ function onResults(results) {
         drawUltimateStar(canvasCtx, cx, cy - 300, 1.0);
         canvasCtx.globalAlpha = 1.0;
         
-        // Update and Draw Lyrics (Only in Gallery Mode for now, or always?)
-        // Let's show it in Gallery mode since that's when the music plays full volume usually
+        // --- Interactive 3D System & Lyrics ---
+        if (interactiveSystem) {
+            interactiveSystem.update();
+            interactiveSystem.draw(canvasCtx, canvasElement.width, canvasElement.height);
+            
+            // Hand Interaction logic
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Draw Hand Skeleton (Subtle)
+                canvasCtx.save();
+                canvasCtx.globalAlpha = 0.4; // More subtle in gallery
+                drawMagicalHand(canvasCtx, landmarks);
+                canvasCtx.restore();
+
+                // 1. Emit trails from hand
+                interactiveSystem.handleHand(landmarks, canvasElement.width, canvasElement.height);
+                
+                // 2. Check Lyric Interaction (Disabled)
+                // if (lyricsManager && lyricsManager.currentBounds) {
+                //     const isTouching = interactiveSystem.handleLyrics(
+                //         lyricsManager.currentBounds, 
+                //         canvasElement.width, 
+                //         canvasElement.height, 
+                //         landmarks
+                //     );
+                //     lyricsManager.isTouched = isTouching;
+                // }
+            } else {
+                if (lyricsManager) lyricsManager.isTouched = false;
+            }
+        }
+
+        // Update and Draw Lyrics
         if (lyricsManager) {
             lyricsManager.update();
             lyricsManager.draw(canvasCtx, canvasElement.width, canvasElement.height);
