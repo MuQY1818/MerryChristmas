@@ -6,7 +6,7 @@
     <title>Magic Christmas Tree</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Italianno&family=Great+Vibes&family=Mountains+of+Christmas:wght@400;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <!-- MediaPipe Dependencies -->
     <script src="https://fastly.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -72,6 +72,18 @@
             <div class="modal-content">
                 <img id="modal-image" src="" alt="Christmas Memory">
                 <button id="close-modal">&times;</button>
+            </div>
+        </div>
+
+        <!-- Wish Modal -->
+        <div id="wish-modal">
+            <div class="wish-dialog">
+                <div class="wish-title">明年圣诞节还想和你一起过可以嘛？</div>
+                <div class="wish-actions" id="wish-actions">
+                    <button class="wish-btn yes" id="wish-yes">可以</button>
+                    <button class="wish-btn no" id="wish-no">不可以</button>
+                </div>
+                <div class="wish-note" id="wish-note">答应我，星星会替我保存。</div>
             </div>
         </div>
     </div>

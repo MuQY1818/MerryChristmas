@@ -137,16 +137,18 @@ body::after {
 }
 
 #gallery-center-text {
-    font-family: 'Mountains of Christmas', cursive;
-    font-size: 130px; /* Slightly larger */
+    font-family: 'Italianno', 'Great Vibes', 'Mountains of Christmas', cursive;
+    font-size: 150px; /* Script vibe */
+    font-weight: 400;
+    letter-spacing: 2px;
     background: linear-gradient(to bottom, #fff 0%, #FFD700 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     color: transparent; /* Fallback */
-    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
+    filter: drop-shadow(0 0 18px rgba(255, 215, 0, 0.7));
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(30px) rotate(-2deg);
     transition: all 2s ease 1s; 
     z-index: 30; /* Ensure above vignette if possible, or adjust vignette z-index */
 }
@@ -239,17 +241,24 @@ body::after {
         repeating-radial-gradient(
             #111 0, 
             #111 2px, 
-            #222 3px, 
-            #222 4px
-        );
+        #222 3px, 
+        #222 4px
+    );
     position: relative;
     animation: spin 8s linear infinite;
     animation-play-state: paused;
     border: 1px solid #000;
+    cursor: pointer;
+    transition: box-shadow 0.3s ease, filter 0.3s ease;
 }
 
 .vinyl-record.playing {
     animation-play-state: running;
+}
+
+.vinyl-record:hover {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.35);
+    filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.45));
 }
 
 .vinyl-label {
@@ -512,4 +521,114 @@ body::after {
 #close-modal:hover {
     transform: scale(1.1) rotate(90deg);
     background: #FFD700;
+}
+
+/* --- Wish Modal --- */
+#wish-modal {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 215, 0, 0.12), transparent 35%),
+                radial-gradient(circle at 70% 70%, rgba(124, 77, 255, 0.12), transparent 30%),
+                rgba(0, 6, 20, 0.8);
+    backdrop-filter: blur(10px) saturate(140%);
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+#wish-modal.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.wish-dialog {
+    position: relative;
+    padding: 28px 30px 32px;
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 25px rgba(255, 215, 0, 0.25);
+    min-width: 360px;
+    transform: translateY(20px);
+    animation: float-modal 4s ease-in-out infinite;
+}
+
+.wish-dialog::before {
+    content: '';
+    position: absolute;
+    inset: -30px -40px -10px;
+    background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), transparent 40%);
+    filter: blur(18px);
+    z-index: -1;
+}
+
+@keyframes float-modal {
+    0%, 100% { transform: translateY(20px); }
+    50% { transform: translateY(10px); }
+}
+
+.wish-title {
+    font-size: 22px;
+    color: #fff;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+.wish-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin: 10px auto 14px;
+    width: 320px;
+    height: 120px;
+}
+
+.wish-btn {
+    min-width: 120px;
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #0f172a;
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+    transition: transform 0.25s ease, background 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.wish-btn.yes {
+    background: linear-gradient(120deg, #7cf1d4, #64ffda, #b3ffe9);
+}
+
+.wish-btn.yes:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 10px 30px rgba(100, 255, 218, 0.35);
+}
+
+.wish-btn.no {
+    background: linear-gradient(120deg, #ffc0cb, #ff8fb1);
+    color: #5c0a28;
+}
+
+.wish-btn.no:hover {
+    box-shadow: 0 12px 25px rgba(255, 143, 177, 0.4);
+}
+
+.wish-note {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
 }

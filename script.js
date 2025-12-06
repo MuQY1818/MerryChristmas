@@ -6,6 +6,11 @@ const promptElement = document.getElementById('prompt-text');
 const galleryContainer = document.getElementById('gallery-container');
 const galleryText = document.getElementById('gallery-center-text');
 const bgm = document.getElementById('bgm');
+const wishModal = document.getElementById('wish-modal');
+const wishYesBtn = document.getElementById('wish-yes');
+const wishNoBtn = document.getElementById('wish-no');
+const wishNote = document.getElementById('wish-note');
+const wishActions = document.getElementById('wish-actions');
 
 // State Machine
 const STATE = {
@@ -178,6 +183,83 @@ modal.addEventListener('click', (e) => {
     }
 });
 
+// Wish Modal Logic
+let wishHideTimer = null;
+
+function showWishModal() {
+    if (!wishModal) return;
+    clearTimeout(wishHideTimer);
+    wishModal.classList.add('visible');
+    if (wishNote) {
+        wishNote.textContent = '答应我，星星会替我保存。';
+    }
+    if (wishNoBtn) {
+        wishNoBtn.style.transform = 'translate(0px, 0px) rotate(0deg)';
+    }
+}
+
+function hideWishModal() {
+    if (!wishModal) return;
+    wishModal.classList.remove('visible');
+}
+
+function nudgeNoButton(e) {
+    if (!wishModal || !wishNoBtn || !wishActions || !wishModal.classList.contains('visible')) return;
+    const rect = wishNoBtn.getBoundingClientRect();
+    const area = wishActions.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+    const threshold = 140;
+    if (dist < threshold) {
+        const angle = Math.atan2(cy - e.clientY, cx - e.clientX);
+        const offset = threshold - dist + 30;
+        let targetX = Math.cos(angle) * offset + (Math.random() * 25 - 12);
+        let targetY = Math.sin(angle) * offset + (Math.random() * 25 - 12);
+        const maxX = area.width / 2 - rect.width / 2 - 12;
+        const maxY = area.height / 2 - rect.height / 2 - 12;
+        targetX = Math.max(-maxX, Math.min(maxX, targetX));
+        targetY = Math.max(-maxY, Math.min(maxY, targetY));
+        wishNoBtn.style.transform = `translate(${targetX}px, ${targetY}px) rotate(${(Math.random() - 0.5) * 14}deg)`;
+    }
+}
+
+if (wishYesBtn) {
+    wishYesBtn.addEventListener('click', () => {
+        if (wishNote) {
+            wishNote.textContent = '我也是这么想的！那就约好了～';
+        }
+        wishHideTimer = setTimeout(hideWishModal, 1200);
+    });
+}
+
+if (wishNoBtn) {
+    wishNoBtn.addEventListener('click', (e) => {
+        if (wishNote) {
+            wishNote.textContent = '不可以？那我就先躲开啦～';
+        }
+        nudgeNoButton(e);
+    });
+}
+
+if (wishModal) {
+    wishModal.addEventListener('click', (e) => {
+        if (e.target === wishModal) {
+            hideWishModal();
+        }
+    });
+    wishModal.addEventListener('mousemove', nudgeNoButton);
+}
+
+function triggerSongDownload() {
+    if (!bgm || !bgm.src) return;
+    const link = document.createElement('a');
+    link.href = bgm.src;
+    link.download = 'SpecialFrequency.mp3';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
 class MagicDust {
     constructor(x, y) {
@@ -655,6 +737,15 @@ class MusicPlayer {
             e.stopPropagation(); // Prevent bubbling
             this.togglePlay();
         });
+
+        // Vinyl Click -> Download + Sweet Prompt
+        if (this.vinyl) {
+            this.vinyl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                triggerSongDownload();
+                showWishModal();
+            });
+        }
         
         // Audio Events
         this.audio.addEventListener('timeupdate', () => this.updateProgress());
