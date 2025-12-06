@@ -137,20 +137,52 @@ body::after {
 }
 
 #gallery-center-text {
-    font-family: 'Italianno', 'Great Vibes', 'Mountains of Christmas', cursive;
-    font-size: 150px; /* Script vibe */
-    font-weight: 400;
+    font-family: 'Pinyon Script', 'Italianno', 'Great Vibes', 'Mountains of Christmas', cursive;
+    font-size: 160px; /* 更厚实一点 */
+    font-weight: 600;
     letter-spacing: 2px;
-    background: linear-gradient(to bottom, #fff 0%, #FFD700 100%);
+    /* 霓虹循环：首尾颜色重复，避免接缝 */
+    background: linear-gradient(90deg,
+        #00f6ff,
+        #00ffa3,
+        #c4ff0e,
+        #fffd5e,
+        #ff9a3c,
+        #ff4d8d,
+        #b04bff,
+        #00f6ff);
+    background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     color: transparent; /* Fallback */
-    filter: drop-shadow(0 0 18px rgba(255, 215, 0, 0.7));
+    -webkit-text-stroke: 1.4px rgba(255, 255, 255, 0.35);
+    filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.45))
+            drop-shadow(0 0 22px rgba(255, 255, 255, 0.95))
+            drop-shadow(0 0 32px rgba(255, 255, 255, 0.45));
     opacity: 0;
-    transform: translateY(30px) rotate(-2deg);
+    transform: translateY(-80px) rotate(-2deg);
     transition: all 2s ease 1s; 
     z-index: 30; /* Ensure above vignette if possible, or adjust vignette z-index */
+    animation: text-glow 6s ease-in-out infinite alternate,
+               text-rainbow 8s linear infinite,
+               text-float 7s ease-in-out infinite;
+}
+
+@keyframes text-glow {
+    0% { filter: drop-shadow(0 12px 28px rgba(0,0,0,0.45)) drop-shadow(0 0 14px rgba(255,255,255,0.5)); }
+    50% { filter: drop-shadow(0 12px 28px rgba(0,0,0,0.45)) drop-shadow(0 0 28px rgba(255,255,255,0.95)); }
+    100% { filter: drop-shadow(0 12px 28px rgba(0,0,0,0.45)) drop-shadow(0 0 18px rgba(210,230,255,0.9)); }
+}
+
+@keyframes text-rainbow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+@keyframes text-float {
+    0%, 100% { transform: translateY(-80px) rotate(-2deg) scale(1); }
+    50% { transform: translateY(-62px) rotate(-1deg) scale(1.02); }
 }
 
 #gallery-center-text.visible {
@@ -375,6 +407,27 @@ body::after {
     align-items: center;
     justify-content: space-between;
     gap: 15px;
+}
+
+.download-btn {
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(100, 255, 218, 0.35));
+    color: #eafcff;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.3s ease, border-color 0.2s ease, background 0.3s ease;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    white-space: nowrap;
+}
+
+.download-btn:hover {
+    transform: translateY(-1px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.35);
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.15), rgba(100, 255, 218, 0.5));
+    box-shadow: 0 12px 28px rgba(100, 255, 218, 0.25);
 }
 
 .control-btn {
@@ -631,4 +684,16 @@ body::after {
     font-size: 13px;
     letter-spacing: 0.5px;
     line-height: 1.6;
+}
+
+.wish-note .note-en {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e7f5ff;
+    letter-spacing: 0.4px;
+    font-size: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.25);
 }

@@ -11,6 +11,9 @@ const wishYesBtn = document.getElementById('wish-yes');
 const wishNoBtn = document.getElementById('wish-no');
 const wishNote = document.getElementById('wish-note');
 const wishActions = document.getElementById('wish-actions');
+let wishNoPos = { x: 0, y: 0 }; // 当前“不可”按钮偏移
+const wishNoState = { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0, raf: null };
+const downloadBtn = document.getElementById('download-btn');
 
 // State Machine
 const STATE = {
@@ -30,6 +33,9 @@ const CONFIG = {
     // Use gh-proxy.org for photos acceleration
             photos: Array.from({length: 18}, (_, i) => `https://gh-proxy.org/https://raw.githubusercontent.com/MuQY1818/MerryChristmas/main/assets/photos/${i+1}.jpg`)
         };
+
+// Render budget调节：移动端或高分屏适当降载
+const PERF_FACTOR = Math.max(0.65, Math.min(1, (window.innerWidth < 1000 || window.devicePixelRatio > 1.5) ? 0.78 : 1));
 
 let isLoaded = false;
 let holdStartTime = 0;
@@ -81,9 +87,9 @@ class SnowSystem {
     constructor() {
         this.flakes = [];
         // Layered Snow: Back (more, small, slow), Mid, Front (few, fast, large)
-        this.createLayer(100, { minSize: 1, maxSize: 2, minSpeed: 0.2, maxSpeed: 0.5, opacity: 0.3, blur: true });
-        this.createLayer(50, { minSize: 2, maxSize: 4, minSpeed: 0.5, maxSpeed: 1.0, opacity: 0.6, blur: false });
-        this.createLayer(20, { minSize: 4, maxSize: 6, minSpeed: 1.0, maxSpeed: 2.0, opacity: 0.9, blur: false });
+        this.createLayer(Math.max(40, Math.floor(100 * PERF_FACTOR)), { minSize: 1, maxSize: 2, minSpeed: 0.2, maxSpeed: 0.5, opacity: 0.3, blur: true });
+        this.createLayer(Math.max(24, Math.floor(50 * PERF_FACTOR)), { minSize: 2, maxSize: 4, minSpeed: 0.5, maxSpeed: 1.0, opacity: 0.6, blur: false });
+        this.createLayer(Math.max(10, Math.floor(20 * PERF_FACTOR)), { minSize: 4, maxSize: 6, minSpeed: 1.0, maxSpeed: 2.0, opacity: 0.9, blur: false });
     }
     
     createLayer(count, config) {
@@ -173,34 +179,51 @@ function openModal(src) {
     modal.classList.add('visible');
 }
 
-closeModalBtn.addEventListener('click', () => {
-    modal.classList.remove('visible');
-});
-
-modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => {
         modal.classList.remove('visible');
-    }
-});
+    });
+}
+
+if (modal) {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('visible');
+        }
+    });
+}
 
 // Wish Modal Logic
 let wishHideTimer = null;
+let wishIntent = null;
 
-function showWishModal() {
-    if (!wishModal) return;
+function showWishModal(intent = null) {
+    if (!wishModal) {
+        // 兜底：若未找到弹窗元素，直接触发下载
+        triggerSongDownload();
+        return;
+    }
     clearTimeout(wishHideTimer);
+    wishIntent = intent;
     wishModal.classList.add('visible');
     if (wishNote) {
-        wishNote.textContent = '答应我，星星会替我保存。';
+        wishNote.innerHTML = intent === 'download' 
+            ? '先答应我，再把歌送给你～<br><span class=\"note-en\">The song belongs to you!</span>'
+            : '答应我，星星会替我保存。';
     }
     if (wishNoBtn) {
         wishNoBtn.style.transform = 'translate(0px, 0px) rotate(0deg)';
+        wishNoPos = { x: 0, y: 0 };
+        wishNoState.x = 0; wishNoState.y = 0;
+        wishNoState.vx = 0; wishNoState.vy = 0;
+        wishNoState.targetX = 0; wishNoState.targetY = 0;
     }
 }
 
 function hideWishModal() {
     if (!wishModal) return;
     wishModal.classList.remove('visible');
+    wishIntent = null;
 }
 
 function nudgeNoButton(e) {
@@ -210,24 +233,64 @@ function nudgeNoButton(e) {
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
     const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
-    const threshold = 140;
-    if (dist < threshold) {
-        const angle = Math.atan2(cy - e.clientY, cx - e.clientX);
-        const offset = threshold - dist + 30;
-        let targetX = Math.cos(angle) * offset + (Math.random() * 25 - 12);
-        let targetY = Math.sin(angle) * offset + (Math.random() * 25 - 12);
-        const maxX = area.width / 2 - rect.width / 2 - 12;
-        const maxY = area.height / 2 - rect.height / 2 - 12;
-        targetX = Math.max(-maxX, Math.min(maxX, targetX));
-        targetY = Math.max(-maxY, Math.min(maxY, targetY));
-        wishNoBtn.style.transform = `translate(${targetX}px, ${targetY}px) rotate(${(Math.random() - 0.5) * 14}deg)`;
+    const safeRadius = 210;
+    const panicRadius = 120;
+    const maxX = area.width / 2 - rect.width / 2 - 10;
+    const maxY = area.height / 2 - rect.height / 2 - 10;
+
+    // 轻微呼吸感：远离时缓慢游走
+    if (dist >= safeRadius) {
+        const drift = Math.sin(performance.now() / 600) * 12;
+        wishNoState.targetX = Math.max(-maxX, Math.min(maxX, drift));
+        wishNoState.targetY = Math.max(-maxY, Math.min(maxY, Math.cos(performance.now() / 700) * 10));
+        return;
     }
+
+    const angle = Math.atan2(cy - e.clientY, cx - e.clientX);
+    const dash = (safeRadius - dist) * 0.75 + 30;
+    const jitter = () => (Math.random() - 0.5) * 20;
+    let targetX = wishNoState.x + Math.cos(angle) * dash + jitter();
+    let targetY = wishNoState.y + Math.sin(angle) * dash + jitter();
+
+    if (dist < panicRadius) {
+        // 瞬移到对角线，带少量随机
+        targetX = (Math.random() > 0.5 ? maxX : -maxX) * (0.7 + Math.random() * 0.25);
+        targetY = (Math.random() > 0.5 ? maxY : -maxY) * (0.7 + Math.random() * 0.25);
+    }
+
+    targetX = Math.max(-maxX, Math.min(maxX, targetX));
+    targetY = Math.max(-maxY, Math.min(maxY, targetY));
+
+    wishNoState.targetX = targetX;
+    wishNoState.targetY = targetY;
+}
+
+function jumpNoButtonAway(power = 1.8) {
+    if (!wishModal || !wishNoBtn || !wishActions || !wishModal.classList.contains('visible')) return;
+    const rect = wishNoBtn.getBoundingClientRect();
+    const area = wishActions.getBoundingClientRect();
+    const maxX = area.width / 2 - rect.width / 2 - 10;
+    const maxY = area.height / 2 - rect.height / 2 - 10;
+
+    const targetX = (Math.random() > 0.5 ? maxX : -maxX) * (0.8 + Math.random() * 0.2);
+    const targetY = (Math.random() > 0.5 ? maxY : -maxY) * (0.8 + Math.random() * 0.2);
+
+    const dx = targetX - wishNoState.x;
+    const dy = targetY - wishNoState.y;
+    wishNoState.vx += dx * 0.25 * power;
+    wishNoState.vy += dy * 0.25 * power;
+
+    wishNoState.targetX = targetX;
+    wishNoState.targetY = targetY;
 }
 
 if (wishYesBtn) {
     wishYesBtn.addEventListener('click', () => {
         if (wishNote) {
-            wishNote.textContent = '我也是这么想的！那就约好了～';
+            wishNote.innerHTML = '我也是这么想的！那就约好了～<br><span class="note-en">The song belongs to you!</span>';
+        }
+        if (wishIntent === 'download') {
+            triggerSongDownload();
         }
         wishHideTimer = setTimeout(hideWishModal, 1200);
     });
@@ -236,11 +299,47 @@ if (wishYesBtn) {
 if (wishNoBtn) {
     wishNoBtn.addEventListener('click', (e) => {
         if (wishNote) {
-            wishNote.textContent = '不可以？那我就先躲开啦～';
+            wishNote.innerHTML = '不可以？那我就先躲开啦～<br><span class="note-en">The song belongs to you!</span>';
         }
         nudgeNoButton(e);
+        jumpNoButtonAway(2.2); // 点击后快速弹开
     });
+    wishNoBtn.addEventListener('pointerenter', nudgeNoButton);
 }
+
+function startWishNoLoop() {
+    if (!wishNoBtn) return;
+    const stiffness = 0.12;
+    const damping = 0.82;
+    const maxRotate = 16;
+
+    const step = () => {
+        if (wishModal && !wishModal.classList.contains('visible')) {
+            wishNoState.vx *= 0.8;
+            wishNoState.vy *= 0.8;
+        }
+
+        // 弹簧缓动
+        const ax = (wishNoState.targetX - wishNoState.x) * stiffness;
+        const ay = (wishNoState.targetY - wishNoState.y) * stiffness;
+        wishNoState.vx = (wishNoState.vx + ax) * damping;
+        wishNoState.vy = (wishNoState.vy + ay) * damping;
+        wishNoState.x += wishNoState.vx;
+        wishNoState.y += wishNoState.vy;
+
+        // 更新样式
+        const rot = (wishNoState.vx + wishNoState.vy) * 3;
+        wishNoBtn.style.transform = `translate(${wishNoState.x}px, ${wishNoState.y}px) rotate(${Math.max(-maxRotate, Math.min(maxRotate, rot))}deg)`;
+
+        wishNoState.raf = requestAnimationFrame(step);
+    };
+
+    if (!wishNoState.raf) {
+        wishNoState.raf = requestAnimationFrame(step);
+    }
+}
+
+startWishNoLoop();
 
 if (wishModal) {
     wishModal.addEventListener('click', (e) => {
@@ -249,6 +348,15 @@ if (wishModal) {
         }
     });
     wishModal.addEventListener('mousemove', nudgeNoButton);
+}
+
+if (downloadBtn) {
+    downloadBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showWishModal('download');
+    });
+} else {
+    console.warn('download button not found, skip modal wiring');
 }
 
 function triggerSongDownload() {
@@ -737,15 +845,6 @@ class MusicPlayer {
             e.stopPropagation(); // Prevent bubbling
             this.togglePlay();
         });
-
-        // Vinyl Click -> Download + Sweet Prompt
-        if (this.vinyl) {
-            this.vinyl.addEventListener('click', (e) => {
-                e.stopPropagation();
-                triggerSongDownload();
-                showWishModal();
-            });
-        }
         
         // Audio Events
         this.audio.addEventListener('timeupdate', () => this.updateProgress());
@@ -1101,6 +1200,7 @@ class LyricsManager {
 }
 
 let time = 0;
+let frameTick = 0; // 用于降低部分计算频率
 
 function drawFancyTree(ctx, scale) {
     if (scale < 0.05) return;
@@ -1273,7 +1373,7 @@ function drawSpiralLights(ctx, cx, bottomY, height, scale) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     const loops = 4;
-    const pointsPerLoop = 20;
+    const pointsPerLoop = Math.max(14, Math.floor(20 * PERF_FACTOR));
     for(let i=0; i<loops * pointsPerLoop; i++) {
         const progress = i / (loops * pointsPerLoop);
         const y = bottomY - (progress * height);
@@ -1495,6 +1595,7 @@ function onResults(results) {
         loadingElement.style.display = 'none';
         promptElement.style.opacity = 1;
     }
+    frameTick++;
 
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     
@@ -1502,20 +1603,22 @@ function onResults(results) {
     snow.update();
     snow.draw(canvasCtx);
     
-    magicDust.forEach((p, index) => {
+    for (let i = magicDust.length - 1; i >= 0; i--) {
+        const p = magicDust[i];
         p.update();
         p.draw(canvasCtx);
-        if(p.life <= 0) magicDust.splice(index, 1);
-    });
+        if (p.life <= 0) magicDust.splice(i, 1);
+    }
     
-    sparkles.forEach((s, index) => {
+    for (let i = sparkles.length - 1; i >= 0; i--) {
+        const s = sparkles[i];
         s.draw(canvasCtx);
-        if(s.phase > Math.PI * 4) sparkles.splice(index, 1); 
-    });
+        if (s.phase > Math.PI * 4) sparkles.splice(i, 1); 
+    }
 
     if (currentState === STATE.GALLERY) {
         // Render Particle Tree
-        treeRotation += 0.005;
+        treeRotation += 0.005 * PERF_FACTOR;
         
         // Entrance Animation
         const galleryElapsed = Date.now() - galleryStartTime;
@@ -1529,7 +1632,9 @@ function onResults(results) {
         const riseAnim = (1 - ease) * 150; // Rise from 150px below
         
         // Sort by Z depth (painters algo) - simple approach: sort by currZ
-        treeParticles.sort((a, b) => b.currZ - a.currZ);
+        if ((frameTick & 1) === 0) { // 每隔一帧再排序，减轻压力
+            treeParticles.sort((a, b) => b.currZ - a.currZ);
+        }
         
         const cx = canvasElement.width / 2;
         const cy = canvasElement.height / 2 + 50 + riseAnim; // Shift down a bit + rise animation
@@ -1723,7 +1828,8 @@ function triggerExplosion() {
     const centerX = canvasElement.width / 2;
     const centerY = canvasElement.height / 2;
     
-    for(let i=0; i<300; i++) {
+    const burstCount = Math.max(120, Math.floor(240 * PERF_FACTOR));
+    for(let i=0; i<burstCount; i++) {
         const color = Math.random() > 0.3 ? `hsl(${Math.random()*60 + 40}, 100%, 70%)` : '#64ffda';
         particles.push(new Particle(centerX, centerY, color));
     }
@@ -1741,8 +1847,8 @@ function enterGalleryState() {
     
     // Init Particle Tree
     treeParticles = [];
-    const photoCount = 150; 
-    const lightCount = 600;
+    const photoCount = Math.max(80, Math.floor(130 * PERF_FACTOR)); 
+    const lightCount = Math.max(260, Math.floor(500 * PERF_FACTOR));
     const totalCount = photoCount + lightCount;
     
     const height = 700; // Taller
