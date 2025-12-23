@@ -14,6 +14,9 @@ const wishActions = document.getElementById('wish-actions');
 let wishNoPos = { x: 0, y: 0 }; // 当前“不可”按钮偏移
 const wishNoState = { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0, raf: null };
 const downloadBtn = document.getElementById('download-btn');
+const countdownOverlay = document.getElementById('countdown-overlay');
+const countdownTimeEl = document.getElementById('countdown-time');
+const countdownDateEl = document.getElementById('countdown-date');
 
 // State Machine
 const STATE = {
@@ -338,8 +341,6 @@ function startWishNoLoop() {
         wishNoState.raf = requestAnimationFrame(step);
     }
 }
-
-startWishNoLoop();
 
 if (wishModal) {
     wishModal.addEventListener('click', (e) => {
@@ -1569,8 +1570,11 @@ hands.setOptions({
 });
 hands.onResults(onResults);
 
+let appStarted = false;
+
 const init = () => {
     // --- Init ---
+    startWishNoLoop();
     lyricsManager = new LyricsManager(bgm);
     musicPlayer = new MusicPlayer(bgm);
     interactiveSystem = new InteractiveSystem();
@@ -1585,7 +1589,74 @@ const init = () => {
     camera.start();
 };
 
-init();
+function pad2(num) {
+    return String(num).padStart(2, '0');
+}
+
+function startExperience() {
+    if (appStarted) return;
+    appStarted = true;
+    document.body.classList.add('unlocked');
+    init();
+}
+
+function setupCountdownGate() {
+    // 倒计时目标：2025 年 12 月 25 日 00:00（以访问者本地时区计算）
+    const target = new Date(2025, 11, 25, 0, 0, 0, 0);
+
+    if (countdownDateEl) {
+        const formatted = target.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+        countdownDateEl.textContent = `目标时间：${formatted}`;
+    }
+
+    const tick = () => {
+        const diffMs = target.getTime() - Date.now();
+        if (diffMs <= 0) {
+            startExperience();
+            return;
+        }
+
+        const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+        const days = Math.floor(totalSeconds / 86400);
+        const hours = Math.floor((totalSeconds % 86400) / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        if (countdownTimeEl) {
+            countdownTimeEl.textContent = `${days}天 ${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
+        }
+    };
+
+    // 若倒计时 UI 缺失，直接放行（避免把页面锁死）
+    if (!countdownOverlay || !countdownTimeEl) {
+        startExperience();
+        return;
+    }
+
+    // 已到/已过目标时间：直接放行
+    if (Date.now() >= target.getTime()) {
+        startExperience();
+        return;
+    }
+
+    tick();
+    const timerId = setInterval(() => {
+        if (appStarted) {
+            clearInterval(timerId);
+            return;
+        }
+        tick();
+    }, 1000);
+}
+
+setupCountdownGate();
 
 let treeRotation = 0;
 

@@ -15,6 +15,15 @@
     <script src="https://fastly.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
+    <!-- Countdown Gate: content visible only after Christmas (Dec 25) -->
+    <div id="countdown-overlay" aria-live="polite">
+        <div class="countdown-card">
+            <div class="countdown-title">距离圣诞节还有</div>
+            <div class="countdown-time" id="countdown-time">--天 --:--:--</div>
+            <div class="countdown-date" id="countdown-date"></div>
+            <div class="countdown-hint">倒计时结束后将自动进入</div>
+        </div>
+    </div>
     <div id="container">
         <div id="loading">正在准备魔法... (请允许摄像头权限)</div>
         <div id="prompt-text">请开启摄像头，伸出一只手</div>
