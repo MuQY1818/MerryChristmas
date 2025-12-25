@@ -1560,7 +1560,8 @@ const snow = new SnowSystem();
 
 // MediaPipe Setup - 使用本地模型文件
 const hands = new Hands({locateFile: (file) => {
-    return `libs/mediapipe/${file}`;
+    // 确保路径从根目录开始
+    return `/libs/mediapipe/${file}`;
 }});
 hands.setOptions({
     maxNumHands: 1,
