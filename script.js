@@ -1558,9 +1558,9 @@ function drawEnergyBetweenFingers(ctx, p1, p2, dist) {
 
 const snow = new SnowSystem();
 
-// MediaPipe Setup
+// MediaPipe Setup - 使用本地模型文件
 const hands = new Hands({locateFile: (file) => {
-    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+    return `libs/mediapipe/${file}`;
 }});
 hands.setOptions({
     maxNumHands: 1,
